@@ -35,6 +35,7 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
  <section id="t-list" class="hide"><div class="card"><input id="q" placeholder="Cari aset, bangunan, pelanggan…"><div id="list"></div></div></section>
  <section id="t-admin" class="hide">
   <div class="card"><h3>Permohonan akses <span id="r-n"></span></h3><div id="r-list"></div><div id="r-done"></div></div>
+  <div class="card"><h3>Pengguna <span id="u-n"></span></h3><div id="u-list"></div></div>
   <div class="card"><h3>Pelanggan baharu</h3><input id="c-name" placeholder="cth: DAHLIA APARTMENT"><button class="btn" id="c-add">Tambah pelanggan</button><div class="msg" id="c-m"></div></div>
   <div class="card"><h3>Bangunan baharu</h3><select id="b-cust"></select><input id="b-name" placeholder="Nama bangunan"><button class="btn" id="b-add">Tambah bangunan</button><div class="msg" id="b-m"></div></div>
   <div class="card"><h3>Alat pemadam baharu</h3><select id="e-bldg"></select><select id="e-type"></select><input id="e-code" placeholder="ID aset, cth APA-0001"><input id="e-due" type="date"><button class="btn" id="e-add">Simpan aset</button><div class="msg" id="e-m"></div></div>
@@ -44,9 +45,12 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
   <p class="msg">Fail .xlsx atau .csv. Ruangan dikenali: Location/Lokasi, Expired Date/Tarikh, Quantity, Serial No, Asset ID, Type/Jenis. Baris dengan ID aset sama akan dikemas kini, bukan digandakan.</p>
   <select id="i-cust"></select><input id="i-bldg" placeholder="Nama bangunan, cth: RSC 1"><input id="i-pre" placeholder="Awalan ID aset, cth: RSC1 (jika fail tiada ID aset)">
   <input id="i-file" type="file" accept=".xlsx,.xls,.csv"><div class="msg" id="i-m"></div><div id="i-list"></div><button class="btn hide" id="i-go">Sahkan &amp; simpan ke pangkalan data</button></div></section>
+ <section id="t-prof" class="hide"><div class="card"><h3>Profil saya</h3><div id="p-info"></div><label class="msg">Nama paparan</label><input id="p-name" placeholder="Nama anda"><button class="btn" id="p-save">Simpan nama</button><div class="msg" id="p-m"></div></div>
+ <div class="card"><h3>Tukar kata laluan</h3><input id="p-pw" type="password" placeholder="Kata laluan baharu (min 8 aksara)"><input id="p-pw2" type="password" placeholder="Ulang kata laluan"><button class="btn" id="p-pwb">Tukar kata laluan</button><div class="msg" id="p-pm"></div></div>
+ <div class="card"><button id="p-out">Log keluar</button></div></section>
  <p class="note">Rekod dalaman APA CARE, bukan sijil rasmi JBPM/eFEIS.<br><a href="#" class="lg">Dasar Privasi &amp; Terma</a></p>
 </main>
-<nav id="nav" class="hide"><button data-t="dash" class="on">📊<br>Dashboard</button><button data-t="list">🧯<br>Aset</button><button data-t="admin" id="nadm" class="hide">⚙️<br>Admin</button><button data-t="imp" id="nimp" class="hide">📥<br>Import</button></nav>
+<nav id="nav" class="hide"><button data-t="dash" class="on">📊<br>Dashboard</button><button data-t="list">🧯<br>Aset</button><button data-t="prof">👤<br>Profil</button><button data-t="admin" id="nadm" class="hide">⚙️<br>Admin</button><button data-t="imp" id="nimp" class="hide">📥<br>Import</button></nav>
 <div id="legal" class="hide" style="position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));font-size:14px;line-height:1.5"><div style="max-width:700px;margin:auto">
 <h2>Dasar Privasi &amp; Terma</h2>
 <h3>Bahasa Malaysia</h3>
@@ -79,7 +83,7 @@ async function load(){
  const n=k=>A.filter(x=>st(x)===k).length;
  $('#kpis').innerHTML=`<div class="kpi"><span>Jumlah aset</span><h2>${A.length}</h2></div><div class="kpi g"><span>Baik</span><h2>${n('ok')}</h2></div><div class="kpi w"><span>Servis ≤30 hari</span><h2>${n('soon')}</h2></div><div class="kpi r"><span>Lewat</span><h2>${n('over')}</h2></div>`;
  const at=A.filter(x=>st(x)!=='ok');$('#attn').innerHTML=at.length?at.map(item).join(''):'<p class="msg">Tiada aset perlu tindakan.</p>';
- btot();repl();list();if(ME&&ME.role==='super_admin')reqs();$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
+ btot();repl();prof();list();if(ME&&ME.role==='super_admin'){reqs();users()}$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
  $('#e-bldg').innerHTML=opts(BL,x=>`${x.customers?.name||''} – ${x.name}`);$('#e-type').innerHTML=opts(TY,x=>x.name);
 }
 function list(){const q=$('#q').value.toLowerCase();const r=A.filter(x=>JSON.stringify(x).toLowerCase().includes(q));$('#list').innerHTML=r.length?r.map(item).join(''):'<p class="msg">Tiada aset.</p>'}
@@ -87,15 +91,15 @@ async function boot(){
  if(REC)return;
  const {data:{user}}=await SB.auth.getUser();
  if(!user){$('#login').classList.remove('hide');$('#app,#nav,#out').forEach?0:0;['#app','#nav','#out'].forEach(s=>$(s).classList.add('hide'));return}
- const {data:p}=await SB.from('profiles').select('role,customer_id').eq('id',user.id).maybeSingle();
+ const {data:p}=await SB.from('profiles').select('role,customer_id,full_name').eq('id',user.id).maybeSingle();
  if(!p){$('#lm').textContent='Akaun belum dipautkan oleh admin.';await SB.auth.signOut();return}
- ME=p;$('#login').classList.add('hide');['#app','#nav','#out'].forEach(s=>$(s).classList.remove('hide'));
- if(p.role==='super_admin'){$('#nadm').classList.remove('hide');$('#nimp').classList.remove('hide')}
+ ME={...p,email:user.email,id:user.id};$('#login').classList.add('hide');['#app','#nav','#out'].forEach(s=>$(s).classList.remove('hide'));
+ {const ad=p.role==='super_admin';$('#nadm').classList.toggle('hide',!ad);$('#nimp').classList.toggle('hide',!ad);document.querySelector('nav button[data-t="dash"]').click()}
  load();
 }
 $('#go').onclick=async()=>{$('#lm').textContent='Sila tunggu…';const {error}=await SB.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});if(error){$('#lm').textContent='Gagal: '+error.message;return}$('#lm').textContent='';boot()};
-$('#out').onclick=async e=>{e.preventDefault();await SB.auth.signOut();boot()};
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');['dash','list','admin','imp'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t))});
+$('#out').onclick=async e=>{e.preventDefault();await SB.auth.signOut();location.reload()};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');['dash','list','prof','admin','imp'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t))});
 $('#q').oninput=list;
 async function act(m,p,ok){$(m).textContent='Menyimpan…';const {error}=await p;$(m).textContent=error?'Ralat: '+error.message:ok;if(!error)load()}
 $('#c-add').onclick=()=>act('#c-m',SB.from('customers').insert({name:$('#c-name').value.trim()}),'Pelanggan ditambah ✔');
@@ -177,5 +181,18 @@ async function done(){const {data}=await SB.from('access_requests').select('*').
  $('#r-done').innerHTML=Q.length?'<p class="msg"><b>Diluluskan terkini</b>: tekan WhatsApp untuk beritahu pemohon</p>'+Q.map(r=>{let t=String(r.phone||'').replace(/\D/g,'');if(t.startsWith('0'))t='60'+t.slice(1);
   const msg=`Salam ${r.contact}, permohonan akses APA CARE untuk ${r.company} telah diluluskan. Sila daftar akaun di ${location.origin+location.pathname} menggunakan emel ${r.email}.`;
   return `<div class="row"><div><b>${esc(r.company)}</b><br><small>${esc(r.contact)} · ${esc(r.email)}</small></div>${t?`<a href="https://wa.me/${t}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" class="badge ok" style="text-decoration:none;align-self:center">WhatsApp</a>`:''}</div>`}).join(''):''}
+
+const RL={super_admin:'Admin',technician:'Juruteknik',customer:'Pelanggan',service_partner:'Rakan servis'};
+function prof(){const c=CU.find(x=>x.id===ME.customer_id);$('#p-info').innerHTML=`<div class="row"><span>Emel</span><b>${esc(ME.email)}</b></div><div class="row"><span>Peranan</span><b>${RL[ME.role]||esc(ME.role)}</b></div><div class="row"><span>Syarikat</span><b>${esc(c?c.name:'-')}</b></div>`;$('#p-name').value=ME.full_name||''}
+$('#p-save').onclick=async()=>{const m=$('#p-m'),n=$('#p-name').value.trim();m.textContent='Menyimpan…';const {error}=await SB.rpc('update_my_profile',{p_name:n});if(!error)ME.full_name=n;m.textContent=error?'Ralat: '+error.message:'Disimpan ✔'};
+$('#p-pwb').onclick=async()=>{const m=$('#p-pm'),a=$('#p-pw').value;if(a.length<8||a!==$('#p-pw2').value){m.textContent='Minimum 8 aksara dan mesti sama.';return}const {error}=await SB.auth.updateUser({password:a});m.textContent=error?'Ralat: '+error.message:'Kata laluan ditukar ✔';if(!error)$('#p-pw').value=$('#p-pw2').value=''};
+$('#p-out').onclick=async()=>{await SB.auth.signOut();location.reload()};
+async function users(){const {data,error}=await SB.rpc('admin_list_users');if(error){$('#u-list').innerHTML='<p class="msg">Jalankan SQL pengguna dahulu: '+esc(error.message)+'</p>';return}
+ const U=data||[];$('#u-n').textContent=`(${U.length})`;
+ $('#u-list').innerHTML=U.map(u=>{const fixed=u.role==='super_admin'||u.id===ME.id;return `<div class="row" style="flex-direction:column"><div><b>${esc(u.email)}</b> <span class="badge ${u.role?'ok':'soon'}">${u.role?RL[u.role]:'Belum dipautkan'}</span><br><small>${esc(u.full_name||'-')} · ${esc(u.customer_name||'-')}<br>Log masuk terakhir: ${esc((u.last_sign_in_at||'-').slice(0,10))}</small></div>${fixed?'':`<div style="display:flex;gap:6px;flex-wrap:wrap"><select data-r="${u.id}"><option value="customer">Pelanggan</option><option value="technician">Juruteknik</option></select><select data-c="${u.id}"><option value="">- syarikat -</option>${opts(CU,x=>x.name)}</select><button class="btn" data-su="${u.id}">Simpan</button></div>`}</div>`}).join('');
+ U.forEach(u=>{const r=document.querySelector(`[data-r="${u.id}"]`);if(r&&u.role)r.value=u.role==='technician'?'technician':'customer';const c=document.querySelector(`[data-c="${u.id}"]`);if(c)c.value=u.customer_id||''})}
+$('#u-list').onclick=async e=>{const id=e.target.dataset.su;if(!id)return;e.target.disabled=true;
+ const {error}=await SB.rpc('admin_set_user',{p_user:id,p_role:document.querySelector(`[data-r="${id}"]`).value,p_customer:document.querySelector(`[data-c="${id}"]`).value||null});
+ if(error){alert('Ralat: '+error.message);e.target.disabled=false;return}alert('Disimpan ✔');users()};
 boot();
 </script></body></html>
