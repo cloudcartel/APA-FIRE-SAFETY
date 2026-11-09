@@ -36,6 +36,7 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
  <section id="t-admin" class="hide">
   <div class="card"><h3>Permohonan akses <span id="r-n"></span></h3><div id="r-list"></div><div id="r-done"></div></div>
   <div class="card"><h3>Pengguna <span id="u-n"></span></h3><div id="u-list"></div></div>
+  <div class="card"><h3>Urus pelanggan &amp; bangunan</h3><p class="msg">Semak bilangan aset sebelum padam. Untuk menambah, guna borang di bawah.</p><div id="m-list"></div></div>
   <div class="card"><h3>Pelanggan baharu</h3><input id="c-name" placeholder="cth: DAHLIA APARTMENT"><button class="btn" id="c-add">Tambah pelanggan</button><div class="msg" id="c-m"></div></div>
   <div class="card"><h3>Bangunan baharu</h3><select id="b-cust"></select><input id="b-name" placeholder="Nama bangunan"><button class="btn" id="b-add">Tambah bangunan</button><div class="msg" id="b-m"></div></div>
   <div class="card"><h3>Alat pemadam baharu</h3><select id="e-bldg"></select><select id="e-type"></select><input id="e-code" placeholder="ID aset, cth APA-0001"><input id="e-due" type="date"><button class="btn" id="e-add">Simpan aset</button><div class="msg" id="e-m"></div></div>
@@ -75,15 +76,15 @@ const today=new Date();today.setHours(0,0,0,0);
 const st=a=>{if(!a.next_due_on)return'ok';const d=Math.round((new Date(a.next_due_on)-today)/864e5);return d<0?'over':d<=30?'soon':'ok'};
 const L={over:'Lewat',soon:'Hampir tamat',ok:'Baik'};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const item=a=>`<div class="row"><div><b>${esc(a.asset_code)}</b> · ${esc(a.extinguisher_types?.name)}<br><small>${esc(a.customers?.name)} · ${esc(a.buildings?.name)}${a.locations?.exact_spot?' · '+esc(a.locations.exact_spot):''}<br>Servis: ${esc(a.next_due_on||'-')}${a.manufactured_on?'<br>Dibuat: '+esc(a.manufactured_on.slice(0,7)):''}</small></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge ${st(a)}">${L[st(a)]}</span>${rst(a)==='over'?'<span class="badge over">Tukar tabung</span>':''}</div></div>`;
+const item=a=>`<div class="row"><div><b>${esc(a.asset_code)}</b> · ${esc(a.extinguisher_types?.name)}<br><small>${esc(a.customers?.name)} · ${esc(a.buildings?.name)}${a.locations?.exact_spot?' · '+esc(a.locations.exact_spot):''}<br>Servis: ${esc(a.next_due_on||'-')}${a.manufactured_on?'<br>Dibuat: '+esc(a.manufactured_on.slice(0,7)):''}</small></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge ${st(a)}">${L[st(a)]}</span>${rst(a)==='over'?'<span class="badge over">Tukar tabung</span>':''}${ME&&ME.role==='super_admin'?delbtn('da',a.id):''}</div></div>`;
 const opts=(arr,f)=>arr.map(x=>`<option value="${x.id}">${esc(f(x))}</option>`).join('');
 async function load(){
- const [a,c,b,t]=await Promise.all([SB.from('extinguishers').select('*,buildings(name),customers(name),extinguisher_types(name),locations(exact_spot)').order('next_due_on'),SB.from('customers').select('id,name').order('name'),SB.from('buildings').select('id,name,customers(name)').order('name'),SB.from('extinguisher_types').select('id,name')]);
+ const [a,c,b,t]=await Promise.all([SB.from('extinguishers').select('*,buildings(name),customers(name),extinguisher_types(name),locations(exact_spot)').order('next_due_on'),SB.from('customers').select('id,name,created_at').order('name'),SB.from('buildings').select('id,name,customer_id,customers(name)').order('name'),SB.from('extinguisher_types').select('id,name')]);
  A=a.data||[];CU=c.data||[];BL=b.data||[];TY=t.data||[];
  const n=k=>A.filter(x=>st(x)===k).length;
  $('#kpis').innerHTML=`<div class="kpi"><span>Jumlah aset</span><h2>${A.length}</h2></div><div class="kpi g"><span>Baik</span><h2>${n('ok')}</h2></div><div class="kpi w"><span>Servis ≤30 hari</span><h2>${n('soon')}</h2></div><div class="kpi r"><span>Lewat</span><h2>${n('over')}</h2></div>`;
  const at=A.filter(x=>st(x)!=='ok');$('#attn').innerHTML=at.length?at.map(item).join(''):'<p class="msg">Tiada aset perlu tindakan.</p>';
- btot();repl();prof();list();if(ME&&ME.role==='super_admin'){reqs();users()}$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
+ btot();repl();prof();list();if(ME&&ME.role==='super_admin'){reqs();users();manage()}$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
  $('#e-bldg').innerHTML=opts(BL,x=>`${x.customers?.name||''} – ${x.name}`);$('#e-type').innerHTML=opts(TY,x=>x.name);
 }
 function list(){const q=$('#q').value.toLowerCase();const r=A.filter(x=>JSON.stringify(x).toLowerCase().includes(q));$('#list').innerHTML=r.length?r.map(item).join(''):'<p class="msg">Tiada aset.</p>'}
@@ -194,5 +195,13 @@ async function users(){const {data,error}=await SB.rpc('admin_list_users');if(er
 $('#u-list').onclick=async e=>{const id=e.target.dataset.su;if(!id)return;e.target.disabled=true;
  const {error}=await SB.rpc('admin_set_user',{p_user:id,p_role:document.querySelector(`[data-r="${id}"]`).value,p_customer:document.querySelector(`[data-c="${id}"]`).value||null});
  if(error){alert('Ralat: '+error.message);e.target.disabled=false;return}alert('Disimpan ✔');users()};
+
+const delbtn=(k,id)=>`<button data-${k}="${id}" style="margin:0;padding:4px 10px;font-size:12px;width:auto;color:var(--red);border-color:var(--red);height:fit-content">Padam</button>`;
+function manage(){const n=(f)=>A.filter(f).length;
+ $('#m-list').innerHTML=CU.map(c=>`<div class="row"><div><b>${esc(c.name)}</b><br><small>${BL.filter(b=>b.customer_id===c.id).length} bangunan · ${n(a=>a.customer_id===c.id)} aset · dicipta ${esc((c.created_at||'').slice(0,10))}</small></div>${delbtn('dc',c.id)}</div>`+BL.filter(b=>b.customer_id===c.id).map(b=>`<div class="row" style="padding-left:16px"><div>↳ ${esc(b.name)}<br><small>${n(a=>a.building_id===b.id)} aset</small></div>${delbtn('db',b.id)}</div>`).join('')).join('')||'<p class="msg">Tiada data.</p>'}
+document.addEventListener('click',async e=>{const t=e.target,k=['da','db','dc'].find(x=>t.dataset&&t.dataset[x]);if(!k)return;const id=t.dataset[k];
+ const W={da:['aset ini','admin_delete_asset',0],db:['bangunan ini beserta semua asetnya','admin_delete_building',A.filter(a=>a.building_id===id).length],dc:['pelanggan ini beserta semua bangunan dan asetnya','admin_delete_customer',A.filter(a=>a.customer_id===id).length]}[k];
+ if(!confirm('Padam '+W[0]+(W[2]?' ('+W[2]+' aset akan dipadam)':'')+'? Tindakan ini tidak boleh dibatalkan.'))return;
+ t.disabled=true;const {error}=await SB.rpc(W[1],{p_id:id});if(error){alert('Ralat: '+error.message);t.disabled=false;return}load()});
 boot();
 </script></body></html>
