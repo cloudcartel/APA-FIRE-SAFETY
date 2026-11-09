@@ -25,11 +25,14 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
 #login{max-width:380px;margin:40px auto;padding:0 14px}
 </style></head><body>
 <header><span style="font-size:26px">🔥</span><div><b>APA CARE</b><small>Smart Fire Extinguisher Management. Safer Buildings.</small></div><a href="#" id="out" class="hide">Log keluar</a></header>
-<div id="login"><div class="card"><h3>Log masuk</h3><input id="em" type="email" placeholder="Emel"><input id="pw" type="password" placeholder="Kata laluan"><button class="btn" id="go">Log masuk</button><div class="msg" id="lm"></div></div></div>
+<div id="login"><div class="card" id="logf"><h3>Log masuk</h3><input id="em" type="email" placeholder="Emel"><input id="pw" type="password" placeholder="Kata laluan"><button class="btn" id="go">Log masuk</button><div class="msg" id="lm"></div><p class="msg"><a href="#" id="to-req">Mohon akses (pelanggan baharu)</a> · <a href="#" id="to-reg">Daftar akaun (selepas diluluskan)</a></p></div>
+<div class="card hide" id="reqf"><h3>Mohon akses</h3><input id="q-co" placeholder="Nama syarikat"><input id="q-ct" placeholder="Nama pengurus"><input id="q-ph" placeholder="No. telefon"><input id="q-em" type="email" placeholder="Emel"><input id="q-bl" placeholder="Nama bangunan"><input id="q-un" type="number" min="1" placeholder="Anggaran bilangan alat pemadam"><button class="btn" id="q-go">Hantar permohonan</button><div class="msg" id="q-m"></div><p class="msg"><a href="#" class="to-log">← Kembali</a></p></div>
+<div class="card hide" id="regf"><h3>Daftar akaun</h3><p class="msg">Guna emel yang sama dengan permohonan yang telah diluluskan.</p><input id="g-em" type="email" placeholder="Emel"><input id="g-pw" type="password" placeholder="Kata laluan (min 8 aksara)"><button class="btn" id="g-go">Daftar</button><div class="msg" id="g-m"></div><p class="msg"><a href="#" class="to-log">← Kembali</a></p></div></div>
 <main id="app" class="hide">
  <section id="t-dash"><div class="grid" id="kpis"></div><div class="card"><h3>🔄 Tukar tabung (ikut umur)</h3><label class="msg">Had umur tabung (tahun): <input id="life" type="number" min="1" value="10" style="width:80px;display:inline-block"></label><div id="repl"></div></div><div class="card"><h3>⚠️ Perlu tindakan</h3><div id="attn"></div></div><div class="card"><h3>Jumlah unit ikut bangunan</h3><div id="btot"></div></div></section>
  <section id="t-list" class="hide"><div class="card"><input id="q" placeholder="Cari aset, bangunan, pelanggan…"><div id="list"></div></div></section>
  <section id="t-admin" class="hide">
+  <div class="card"><h3>Permohonan akses <span id="r-n"></span></h3><div id="r-list"></div></div>
   <div class="card"><h3>Pelanggan baharu</h3><input id="c-name" placeholder="cth: DAHLIA APARTMENT"><button class="btn" id="c-add">Tambah pelanggan</button><div class="msg" id="c-m"></div></div>
   <div class="card"><h3>Bangunan baharu</h3><select id="b-cust"></select><input id="b-name" placeholder="Nama bangunan"><button class="btn" id="b-add">Tambah bangunan</button><div class="msg" id="b-m"></div></div>
   <div class="card"><h3>Alat pemadam baharu</h3><select id="e-bldg"></select><select id="e-type"></select><input id="e-code" placeholder="ID aset, cth APA-0001"><input id="e-due" type="date"><button class="btn" id="e-add">Simpan aset</button><div class="msg" id="e-m"></div></div>
@@ -57,7 +60,7 @@ async function load(){
  const n=k=>A.filter(x=>st(x)===k).length;
  $('#kpis').innerHTML=`<div class="kpi"><span>Jumlah aset</span><h2>${A.length}</h2></div><div class="kpi g"><span>Baik</span><h2>${n('ok')}</h2></div><div class="kpi w"><span>Servis ≤30 hari</span><h2>${n('soon')}</h2></div><div class="kpi r"><span>Lewat</span><h2>${n('over')}</h2></div>`;
  const at=A.filter(x=>st(x)!=='ok');$('#attn').innerHTML=at.length?at.map(item).join(''):'<p class="msg">Tiada aset perlu tindakan.</p>';
- btot();repl();list();$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
+ btot();repl();list();if(ME&&ME.role==='super_admin')reqs();$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
  $('#e-bldg').innerHTML=opts(BL,x=>`${x.customers?.name||''} – ${x.name}`);$('#e-type').innerHTML=opts(TY,x=>x.name);
 }
 function list(){const q=$('#q').value.toLowerCase();const r=A.filter(x=>JSON.stringify(x).toLowerCase().includes(q));$('#list').innerHTML=r.length?r.map(item).join(''):'<p class="msg">Tiada aset.</p>'}
@@ -117,5 +120,19 @@ function rst(a){const r=rdate(a);if(!r)return null;return r<=today?'over':(r-tod
 function repl(){const L2=A.filter(a=>rst(a)&&rst(a)!=='ok').sort((a,b)=>rdate(a)-rdate(b)),o=L2.filter(a=>rst(a)==='over').length,nm=A.filter(a=>!a.manufactured_on).length;
  $('#repl').innerHTML=`<p class="msg"><b style="color:var(--red)">${o}</b> unit sudah cukup ${LIFE} tahun · ${L2.length-o} akan cukup dalam 12 bulan${nm?` · ${nm} unit tiada tahun buatan`:''}</p>`+L2.map(a=>`<div class="row"><div><b>${esc(a.asset_code)}</b> · ${esc(a.extinguisher_types?.name||'')}<br><small>${esc(a.buildings?.name)} · ${esc(a.locations?.exact_spot||'')}<br>Dibuat: ${esc(a.manufactured_on.slice(0,7))} · Tukar: ${fm(rdate(a))}</small></div><span class="badge ${rst(a)}">${rst(a)==='over'?'Tukar':'Hampir'}</span></div>`).join('')}
 $('#life').value=LIFE;$('#life').onchange=()=>{LIFE=Math.max(1,+$('#life').value||10);try{localStorage.setItem(LK,LIFE)}catch(e){};repl();list()};
+
+const view=w=>['logf','reqf','regf'].forEach(i=>$('#'+i).classList.toggle('hide',i!==w));
+$('#to-req').onclick=e=>{e.preventDefault();view('reqf')};$('#to-reg').onclick=e=>{e.preventDefault();view('regf')};
+document.querySelectorAll('.to-log').forEach(a=>a.onclick=e=>{e.preventDefault();view('logf')});
+$('#q-go').onclick=async()=>{const v=i=>$(i).value.trim(),m=$('#q-m');if(!v('#q-co')||!v('#q-ct')||!/^\S+@\S+\.\S+$/.test(v('#q-em'))){m.textContent='Isi nama syarikat, nama pengurus dan emel yang sah.';return}
+ m.textContent='Menghantar…';const {error}=await SB.from('access_requests').insert({company:v('#q-co'),contact:v('#q-ct'),phone:v('#q-ph')||null,email:v('#q-em').toLowerCase(),building:v('#q-bl')||null,units:parseInt(v('#q-un'))||null});
+ m.textContent=error?'Ralat: '+error.message:'Permohonan dihantar ✔ Kami akan hubungi anda selepas semakan.'};
+$('#g-go').onclick=async()=>{const m=$('#g-m'),pw=$('#g-pw').value;if(pw.length<8){m.textContent='Kata laluan minimum 8 aksara.';return}m.textContent='Mendaftar…';
+ const {error}=await SB.auth.signUp({email:$('#g-em').value.trim().toLowerCase(),password:pw});m.textContent=error?'Ralat: '+error.message:'Berjaya. Semak emel untuk pengesahan, kemudian log masuk.'};
+async function reqs(){const {data}=await SB.from('access_requests').select('*').eq('status','pending').order('created_at');const Q=data||[];$('#r-n').textContent=Q.length?`(${Q.length})`:'';
+ $('#r-list').innerHTML=Q.length?Q.map(r=>`<div class="row"><div><b>${esc(r.company)}</b><br><small>${esc(r.contact)} · ${esc(r.phone||'-')}<br>${esc(r.email)}<br>${esc(r.building||'-')} · ~${esc(r.units||'?')} unit</small></div><div style="display:flex;flex-direction:column;gap:4px;min-width:80px"><button class="btn" style="margin:0;padding:7px" data-ok="${r.id}">Lulus</button><button style="margin:0;padding:7px" data-no="${r.id}">Tolak</button></div></div>`).join(''):'<p class="msg">Tiada permohonan menunggu.</p>'}
+$('#r-list').onclick=async e=>{const ok=e.target.dataset.ok,no=e.target.dataset.no;if(!ok&&!no)return;e.target.disabled=true;
+ const {error}=ok?await SB.rpc('approve_request',{p_id:ok}):await SB.from('access_requests').update({status:'rejected'}).eq('id',no);
+ if(error){alert('Ralat: '+error.message);e.target.disabled=false;return}load()};
 boot();
 </script></body></html>
