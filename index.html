@@ -34,6 +34,7 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
  <section id="t-dash"><div class="grid" id="kpis"></div><div class="card"><h3>🔄 Tukar tabung (ikut umur)</h3><label class="msg">Had umur tabung (tahun): <input id="life" type="number" min="1" value="10" style="width:80px;display:inline-block"></label><div id="repl"></div></div><div class="card hide" id="rem-card"><h3>📣 Peringatan pelanggan (≤60 hari / lewat)</h3><div id="rem"></div></div><div class="card"><h3>⚠️ Perlu tindakan</h3><div id="attn"></div></div><div class="card"><h3>Jumlah unit ikut bangunan</h3><div id="btot"></div></div></section>
  <section id="t-list" class="hide"><div class="card"><input id="q" placeholder="Cari aset, bangunan, pelanggan…"><div id="list"></div></div></section>
  <section id="t-admin" class="hide">
+  <div class="card"><h3>Mod permohonan</h3><label class="msg"><input type="checkbox" id="auto-ck" style="width:auto;margin-right:6px">Luluskan permohonan akses secara automatik (untuk ujian)</label><div class="msg" id="auto-m"></div></div>
   <div class="card"><h3>Permohonan akses <span id="r-n"></span></h3><div id="r-list"></div><div id="r-done"></div></div>
   <div class="card"><h3>Hantaran aset pelanggan <span id="sb-n"></span></h3><div id="sb-list"></div></div>
   <div class="card"><h3>Pengguna <span id="u-n"></span></h3><div id="u-list"></div></div>
@@ -86,7 +87,7 @@ async function load(){
  const n=k=>A.filter(x=>st(x)===k).length;
  $('#kpis').innerHTML=`<div class="kpi"><span>Jumlah aset</span><h2>${A.length}</h2></div><div class="kpi g"><span>Baik</span><h2>${n('ok')}</h2></div><div class="kpi w"><span>Servis ≤30 hari</span><h2>${n('soon')}</h2></div><div class="kpi r"><span>Lewat</span><h2>${n('over')}</h2></div>`;
  const at=A.filter(x=>st(x)!=='ok');$('#attn').innerHTML=at.length?at.map(item).join(''):'<p class="msg">Tiada aset perlu tindakan.</p>';
- btot();repl();prof();loadSubs();rem();list();if(ME&&ME.role==='super_admin'){reqs();users();manage()}$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
+ btot();repl();prof();loadSubs();rem();list();if(ME&&ME.role==='super_admin'){reqs();users();manage();autoLoad()}$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
  $('#e-bldg').innerHTML=opts(BL,x=>`${x.customers?.name||''} – ${x.name}`);$('#e-type').innerHTML=opts(TY,x=>x.name);
 }
 function list(){const q=$('#q').value.toLowerCase();const r=A.filter(x=>JSON.stringify(x).toLowerCase().includes(q));$('#list').innerHTML=r.length?r.map(item).join(''):'<p class="msg">Tiada aset.</p>'}
@@ -155,7 +156,7 @@ $('#to-req').onclick=e=>{e.preventDefault();view('reqf')};$('#to-reg').onclick=e
 document.querySelectorAll('.to-log').forEach(a=>a.onclick=e=>{e.preventDefault();view('logf')});
 $('#q-go').onclick=async()=>{const v=i=>$(i).value.trim(),m=$('#q-m');if(!$('#q-ck').checked){m.textContent='Sila setuju dengan Dasar Privasi & Terma.';return}if(!v('#q-co')||!v('#q-ct')||!/^\S+@\S+\.\S+$/.test(v('#q-em'))){m.textContent='Isi nama syarikat, nama pengurus dan emel yang sah.';return}
  $('#q-go').disabled=true;m.textContent='Menghantar…';const {error}=await SB.from('access_requests').insert({company:v('#q-co'),contact:v('#q-ct'),phone:v('#q-ph')||null,email:v('#q-em').toLowerCase(),building:v('#q-bl')||null,units:parseInt(v('#q-un'))||null});
- $('#q-go').disabled=!error;m.textContent=error?(error.code==='23505'?'Permohonan dengan emel ini sudah menunggu semakan.':'Ralat: '+error.message):'Permohonan dihantar ✔ Kami akan hubungi anda selepas semakan.'};
+ $('#q-go').disabled=!error;m.textContent=error?(error.code==='23505'?'Permohonan dengan emel ini sudah menunggu semakan.':'Ralat: '+error.message):'Permohonan dihantar ✔ Kami akan hubungi anda selepas semakan.';if(!error){const {data:au}=await SB.rpc('auto_approve_on');if(au){m.textContent='Permohonan diluluskan automatik ✔ Sila daftar akaun dengan emel yang sama.';$('#g-em').value=v('#q-em').toLowerCase();setTimeout(()=>view('regf'),1500)}}};
 $('#g-go').onclick=async()=>{const m=$('#g-m'),pw=$('#g-pw').value;if(!$('#g-ck').checked){m.textContent='Sila setuju dengan Dasar Privasi & Terma.';return}if(pw.length<8){m.textContent='Kata laluan minimum 8 aksara.';return}m.textContent='Mendaftar…';
  const {data,error}=await SB.auth.signUp({email:$('#g-em').value.trim().toLowerCase(),password:pw});if(!error&&data.session){boot();return}m.textContent=error?'Ralat: '+error.message:'Berjaya. Semak emel untuk pengesahan, kemudian log masuk.'};
 async function reqs(){done();const {data}=await SB.from('access_requests').select('*').eq('status','pending').order('created_at');const Q=data||[];$('#r-n').textContent=Q.length?`(${Q.length})`:'';
@@ -229,5 +230,8 @@ function rem(){const adm=ME.role==='super_admin';$('#rem-card').classList.toggle
  $('#rem').innerHTML=Object.keys(m).length?Object.entries(m).map(([id,v])=>{const c=CU.find(x=>x.id===id)||{};let t=String(c.phone||'').replace(/\D/g,'');if(t.startsWith('0'))t='60'+t.slice(1);
   const msg=`Salam, peringatan servis APA CARE untuk ${c.name}: ${v.o} unit lewat servis dan ${v.s} unit akan tamat dalam 60 hari. Sila hubungi kami untuk menjadualkan servis.`;
   return `<div class="row"><div><b>${esc(c.name||'-')}</b><br><small>🔴 ${v.o} lewat · 🟡 ${v.s} dalam 60 hari</small></div>${t?`<a href="https://wa.me/${t}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" class="badge ok" style="text-decoration:none;align-self:center">WhatsApp</a>`:'<small>tiada no. telefon</small>'}</div>`}).join(''):'<p class="msg">Tiada unit hampir tamat.</p>'}
+
+async function autoLoad(){const {data}=await SB.from('settings').select('value').eq('key','auto_approve').maybeSingle();$('#auto-ck').checked=data?.value===true}
+$('#auto-ck').onchange=async e=>{const {error}=await SB.from('settings').upsert({key:'auto_approve',value:e.target.checked});$('#auto-m').textContent=error?'Ralat: '+error.message:(e.target.checked?'Automatik HIDUP: sesiapa yang mohon terus diluluskan.':'Automatik MATI: permohonan perlu semakan anda.')};
 boot();
 </script></body></html>
