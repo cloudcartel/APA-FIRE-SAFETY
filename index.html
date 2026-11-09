@@ -25,9 +25,11 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
 #login{max-width:380px;margin:40px auto;padding:0 14px}
 </style></head><body>
 <header><span style="font-size:26px">🔥</span><div><b>APA CARE</b><small>Smart Fire Extinguisher Management. Safer Buildings.</small></div><a href="#" id="out" class="hide">Log keluar</a></header>
-<div id="login"><div class="card" id="logf"><h3>Log masuk</h3><input id="em" type="email" placeholder="Emel"><input id="pw" type="password" placeholder="Kata laluan"><button class="btn" id="go">Log masuk</button><div class="msg" id="lm"></div><p class="msg"><a href="#" id="to-req">Mohon akses (pelanggan baharu)</a> · <a href="#" id="to-reg">Daftar akaun (selepas diluluskan)</a></p></div>
-<div class="card hide" id="reqf"><h3>Mohon akses</h3><input id="q-co" placeholder="Nama syarikat"><input id="q-ct" placeholder="Nama pengurus"><input id="q-ph" placeholder="No. telefon"><input id="q-em" type="email" placeholder="Emel"><input id="q-bl" placeholder="Nama bangunan"><input id="q-un" type="number" min="1" placeholder="Anggaran bilangan alat pemadam"><button class="btn" id="q-go">Hantar permohonan</button><div class="msg" id="q-m"></div><p class="msg"><a href="#" class="to-log">← Kembali</a></p></div>
-<div class="card hide" id="regf"><h3>Daftar akaun</h3><p class="msg">Guna emel yang sama dengan permohonan yang telah diluluskan.</p><input id="g-em" type="email" placeholder="Emel"><input id="g-pw" type="password" placeholder="Kata laluan (min 8 aksara)"><button class="btn" id="g-go">Daftar</button><div class="msg" id="g-m"></div><p class="msg"><a href="#" class="to-log">← Kembali</a></p></div></div>
+<div id="login"><div class="card" id="logf"><h3>Log masuk</h3><input id="em" type="email" placeholder="Emel"><input id="pw" type="password" placeholder="Kata laluan"><button class="btn" id="go">Log masuk</button><div class="msg" id="lm"></div><p class="msg"><a href="#" id="to-req">Mohon akses (pelanggan baharu)</a> · <a href="#" id="to-reg">Daftar akaun (selepas diluluskan)</a> · <a href="#" id="to-fg">Lupa kata laluan?</a><br><a href="#" class="lg">Dasar Privasi &amp; Terma</a></p></div>
+<div class="card hide" id="reqf"><h3>Mohon akses</h3><input id="q-co" placeholder="Nama syarikat"><input id="q-ct" placeholder="Nama pengurus"><input id="q-ph" placeholder="No. telefon"><input id="q-em" type="email" placeholder="Emel"><input id="q-bl" placeholder="Nama bangunan"><input id="q-un" type="number" min="1" placeholder="Anggaran bilangan alat pemadam"><label class="msg"><input type="checkbox" id="q-ck" style="width:auto;margin-right:6px">Saya setuju dengan <a href="#" class="lg">Dasar Privasi &amp; Terma</a></label><button class="btn" id="q-go">Hantar permohonan</button><div class="msg" id="q-m"></div><p class="msg"><a href="#" class="to-log">← Kembali</a></p></div>
+<div class="card hide" id="regf"><h3>Daftar akaun</h3><p class="msg">Guna emel yang sama dengan permohonan yang telah diluluskan.</p><input id="g-em" type="email" placeholder="Emel"><input id="g-pw" type="password" placeholder="Kata laluan (min 8 aksara)"><label class="msg"><input type="checkbox" id="g-ck" style="width:auto;margin-right:6px">Saya setuju dengan <a href="#" class="lg">Dasar Privasi &amp; Terma</a></label><button class="btn" id="g-go">Daftar</button><div class="msg" id="g-m"></div><p class="msg"><a href="#" class="to-log">← Kembali</a></p></div>
+<div class="card hide" id="fgf"><h3>Lupa kata laluan</h3><input id="f-em" type="email" placeholder="Emel akaun"><button class="btn" id="f-go">Hantar pautan tetapan semula</button><div class="msg" id="f-m"></div><p class="msg"><a href="#" class="to-log">← Kembali</a></p></div>
+<div class="card hide" id="newf"><h3>Kata laluan baharu</h3><input id="n-pw" type="password" placeholder="Kata laluan baharu (min 8 aksara)"><input id="n-pw2" type="password" placeholder="Ulang kata laluan"><button class="btn" id="n-go">Simpan kata laluan</button><div class="msg" id="n-m"></div></div></div>
 <main id="app" class="hide">
  <section id="t-dash"><div class="grid" id="kpis"></div><div class="card"><h3>🔄 Tukar tabung (ikut umur)</h3><label class="msg">Had umur tabung (tahun): <input id="life" type="number" min="1" value="10" style="width:80px;display:inline-block"></label><div id="repl"></div></div><div class="card"><h3>⚠️ Perlu tindakan</h3><div id="attn"></div></div><div class="card"><h3>Jumlah unit ikut bangunan</h3><div id="btot"></div></div></section>
  <section id="t-list" class="hide"><div class="card"><input id="q" placeholder="Cari aset, bangunan, pelanggan…"><div id="list"></div></div></section>
@@ -42,9 +44,26 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
   <p class="msg">Fail .xlsx atau .csv. Ruangan dikenali: Location/Lokasi, Expired Date/Tarikh, Quantity, Serial No, Asset ID, Type/Jenis. Baris dengan ID aset sama akan dikemas kini, bukan digandakan.</p>
   <select id="i-cust"></select><input id="i-bldg" placeholder="Nama bangunan, cth: RSC 1"><input id="i-pre" placeholder="Awalan ID aset, cth: RSC1 (jika fail tiada ID aset)">
   <input id="i-file" type="file" accept=".xlsx,.xls,.csv"><div class="msg" id="i-m"></div><div id="i-list"></div><button class="btn hide" id="i-go">Sahkan &amp; simpan ke pangkalan data</button></div></section>
- <p class="note">Rekod dalaman APA CARE, bukan sijil rasmi JBPM/eFEIS.</p>
+ <p class="note">Rekod dalaman APA CARE, bukan sijil rasmi JBPM/eFEIS.<br><a href="#" class="lg">Dasar Privasi &amp; Terma</a></p>
 </main>
 <nav id="nav" class="hide"><button data-t="dash" class="on">📊<br>Dashboard</button><button data-t="list">🧯<br>Aset</button><button data-t="admin" id="nadm" class="hide">⚙️<br>Admin</button><button data-t="imp" id="nimp" class="hide">📥<br>Import</button></nav>
+<div id="legal" class="hide" style="position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));font-size:14px;line-height:1.5"><div style="max-width:700px;margin:auto">
+<h2>Dasar Privasi &amp; Terma</h2>
+<h3>Bahasa Malaysia</h3>
+<p><b>Data yang dikumpul:</b> nama syarikat dan pengurus, no. telefon, emel, maklumat bangunan, rekod alat pemadam api (pemeriksaan, servis, foto) dan log akaun.</p>
+<p><b>Tujuan:</b> mengurus akaun, rekod aset, peringatan servis dan laporan.</p>
+<p><b>Pendedahan:</b> kepada penyedia hosting (Supabase) yang mungkin menyimpan data di luar Malaysia, serta juruteknik atau rakan servis yang ditugaskan. Data tidak dijual kepada pihak ketiga.</p>
+<p><b>Hak anda:</b> mengakses, membetulkan atau meminta pemadaman data, dan menarik balik persetujuan, dengan menghubungi [EMEL PERHUBUNGAN].</p>
+<p><b>Penyimpanan:</b> selagi akaun aktif atau seperti dikehendaki undang-undang.</p>
+<p><b>Terma:</b> Rekod dalam APA CARE ialah rekod dalaman dan bukan sijil atau kelulusan rasmi JBPM/eFEIS. Kerja servis terkawal hanya boleh dilakukan oleh pihak yang layak. Pengguna bertanggungjawab ke atas ketepatan data dan kerahsiaan kata laluan.</p>
+<h3>English</h3>
+<p><b>Data collected:</b> company and contact names, phone, email, building details, fire extinguisher records (inspections, service, photos) and account logs.</p>
+<p><b>Purpose:</b> account management, asset records, service reminders and reports.</p>
+<p><b>Disclosure:</b> to our hosting provider (Supabase), which may store data outside Malaysia, and to assigned technicians or service partners. Data is not sold to third parties.</p>
+<p><b>Your rights:</b> access, correct or request deletion of your data, and withdraw consent, by contacting [EMEL PERHUBUNGAN].</p>
+<p><b>Retention:</b> while your account is active or as required by law.</p>
+<p><b>Terms:</b> Records in APA CARE are internal records, not official JBPM/eFEIS certificates or approvals. Regulated service work must be done by qualified parties. Users are responsible for data accuracy and password confidentiality.</p>
+<button class="btn" id="lg-x">Tutup</button></div></div>
 <script>
 const SB=window.supabase.createClient('https://ruxzjxpahpkqaudjmetr.supabase.co','sb_publishable_lEWWGC5_LRHTDQGb_qzFiA_unEsfVT_');
 const $=s=>document.querySelector(s);let ME,A=[],CU=[],BL=[],TY=[];
@@ -65,6 +84,7 @@ async function load(){
 }
 function list(){const q=$('#q').value.toLowerCase();const r=A.filter(x=>JSON.stringify(x).toLowerCase().includes(q));$('#list').innerHTML=r.length?r.map(item).join(''):'<p class="msg">Tiada aset.</p>'}
 async function boot(){
+ if(REC)return;
  const {data:{user}}=await SB.auth.getUser();
  if(!user){$('#login').classList.remove('hide');$('#app,#nav,#out').forEach?0:0;['#app','#nav','#out'].forEach(s=>$(s).classList.add('hide'));return}
  const {data:p}=await SB.from('profiles').select('role,customer_id').eq('id',user.id).maybeSingle();
@@ -121,18 +141,30 @@ function repl(){const L2=A.filter(a=>rst(a)&&rst(a)!=='ok').sort((a,b)=>rdate(a)
  $('#repl').innerHTML=`<p class="msg"><b style="color:var(--red)">${o}</b> unit sudah cukup ${LIFE} tahun · ${L2.length-o} akan cukup dalam 12 bulan${nm?` · ${nm} unit tiada tahun buatan`:''}</p>`+L2.map(a=>`<div class="row"><div><b>${esc(a.asset_code)}</b> · ${esc(a.extinguisher_types?.name||'')}<br><small>${esc(a.buildings?.name)} · ${esc(a.locations?.exact_spot||'')}<br>Dibuat: ${esc(a.manufactured_on.slice(0,7))} · Tukar: ${fm(rdate(a))}</small></div><span class="badge ${rst(a)}">${rst(a)==='over'?'Tukar':'Hampir'}</span></div>`).join('')}
 $('#life').value=LIFE;$('#life').onchange=()=>{LIFE=Math.max(1,+$('#life').value||10);try{localStorage.setItem(LK,LIFE)}catch(e){};repl();list()};
 
-const view=w=>['logf','reqf','regf'].forEach(i=>$('#'+i).classList.toggle('hide',i!==w));
+const view=w=>['logf','reqf','regf','fgf','newf'].forEach(i=>$('#'+i).classList.toggle('hide',i!==w));
 $('#to-req').onclick=e=>{e.preventDefault();view('reqf')};$('#to-reg').onclick=e=>{e.preventDefault();view('regf')};
 document.querySelectorAll('.to-log').forEach(a=>a.onclick=e=>{e.preventDefault();view('logf')});
-$('#q-go').onclick=async()=>{const v=i=>$(i).value.trim(),m=$('#q-m');if(!v('#q-co')||!v('#q-ct')||!/^\S+@\S+\.\S+$/.test(v('#q-em'))){m.textContent='Isi nama syarikat, nama pengurus dan emel yang sah.';return}
+$('#q-go').onclick=async()=>{const v=i=>$(i).value.trim(),m=$('#q-m');if(!$('#q-ck').checked){m.textContent='Sila setuju dengan Dasar Privasi & Terma.';return}if(!v('#q-co')||!v('#q-ct')||!/^\S+@\S+\.\S+$/.test(v('#q-em'))){m.textContent='Isi nama syarikat, nama pengurus dan emel yang sah.';return}
  m.textContent='Menghantar…';const {error}=await SB.from('access_requests').insert({company:v('#q-co'),contact:v('#q-ct'),phone:v('#q-ph')||null,email:v('#q-em').toLowerCase(),building:v('#q-bl')||null,units:parseInt(v('#q-un'))||null});
  m.textContent=error?'Ralat: '+error.message:'Permohonan dihantar ✔ Kami akan hubungi anda selepas semakan.'};
-$('#g-go').onclick=async()=>{const m=$('#g-m'),pw=$('#g-pw').value;if(pw.length<8){m.textContent='Kata laluan minimum 8 aksara.';return}m.textContent='Mendaftar…';
+$('#g-go').onclick=async()=>{const m=$('#g-m'),pw=$('#g-pw').value;if(!$('#g-ck').checked){m.textContent='Sila setuju dengan Dasar Privasi & Terma.';return}if(pw.length<8){m.textContent='Kata laluan minimum 8 aksara.';return}m.textContent='Mendaftar…';
  const {error}=await SB.auth.signUp({email:$('#g-em').value.trim().toLowerCase(),password:pw});m.textContent=error?'Ralat: '+error.message:'Berjaya. Semak emel untuk pengesahan, kemudian log masuk.'};
 async function reqs(){const {data}=await SB.from('access_requests').select('*').eq('status','pending').order('created_at');const Q=data||[];$('#r-n').textContent=Q.length?`(${Q.length})`:'';
  $('#r-list').innerHTML=Q.length?Q.map(r=>`<div class="row"><div><b>${esc(r.company)}</b><br><small>${esc(r.contact)} · ${esc(r.phone||'-')}<br>${esc(r.email)}<br>${esc(r.building||'-')} · ~${esc(r.units||'?')} unit</small></div><div style="display:flex;flex-direction:column;gap:4px;min-width:80px"><button class="btn" style="margin:0;padding:7px" data-ok="${r.id}">Lulus</button><button style="margin:0;padding:7px" data-no="${r.id}">Tolak</button></div></div>`).join(''):'<p class="msg">Tiada permohonan menunggu.</p>'}
 $('#r-list').onclick=async e=>{const ok=e.target.dataset.ok,no=e.target.dataset.no;if(!ok&&!no)return;e.target.disabled=true;
  const {error}=ok?await SB.rpc('approve_request',{p_id:ok}):await SB.from('access_requests').update({status:'rejected'}).eq('id',no);
  if(error){alert('Ralat: '+error.message);e.target.disabled=false;return}load()};
+
+let REC=false;
+document.querySelectorAll('.lg').forEach(a=>a.onclick=e=>{e.preventDefault();$('#legal').classList.remove('hide')});
+$('#lg-x').onclick=()=>$('#legal').classList.add('hide');
+$('#to-fg').onclick=e=>{e.preventDefault();view('fgf')};
+$('#f-go').onclick=async()=>{const m=$('#f-m'),em=$('#f-em').value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(em)){m.textContent='Masukkan emel yang sah.';return}m.textContent='Menghantar…';
+ const {error}=await SB.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});
+ m.textContent=error?'Ralat: '+error.message:'Jika emel itu berdaftar, pautan tetapan semula telah dihantar. Semak peti masuk dan spam.'};
+SB.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY'){REC=true;['#app','#nav','#out'].forEach(x=>$(x).classList.add('hide'));$('#login').classList.remove('hide');view('newf')}});
+$('#n-go').onclick=async()=>{const m=$('#n-m'),a=$('#n-pw').value,b=$('#n-pw2').value;if(a.length<8||a!==b){m.textContent='Kata laluan minimum 8 aksara dan mesti sama.';return}m.textContent='Menyimpan…';
+ const {error}=await SB.auth.updateUser({password:a});if(error){m.textContent='Ralat: '+error.message;return}
+ REC=false;history.replaceState(null,'',location.pathname);view('logf');boot()};
 boot();
 </script></body></html>
