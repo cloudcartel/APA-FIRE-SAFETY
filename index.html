@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>APA CARE</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--red:#D62828;--navy:#0B1B33;--bg:#F2F4F7;--card:#fff;--text:#0B1B33;--mut:#5b6678;--line:#e1e5ec;--ok:#1a8f4c;--warn:#d98200;padding-top:env(safe-area-inset-top,0px)}
 @media(prefers-color-scheme:dark){:root{--bg:#08111f;--card:#101f38;--text:#eef2f8;--mut:#9aa7bd;--line:#1f3355}}
@@ -26,7 +27,7 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
 <header><span style="font-size:26px">🔥</span><div><b>APA CARE</b><small>Smart Fire Extinguisher Management. Safer Buildings.</small></div><a href="#" id="out" class="hide">Log keluar</a></header>
 <div id="login"><div class="card"><h3>Log masuk</h3><input id="em" type="email" placeholder="Emel"><input id="pw" type="password" placeholder="Kata laluan"><button class="btn" id="go">Log masuk</button><div class="msg" id="lm"></div></div></div>
 <main id="app" class="hide">
- <section id="t-dash"><div class="grid" id="kpis"></div><div class="card"><h3>⚠️ Perlu tindakan</h3><div id="attn"></div></div></section>
+ <section id="t-dash"><div class="grid" id="kpis"></div><div class="card"><h3>🔄 Tukar tabung (ikut umur)</h3><label class="msg">Had umur tabung (tahun): <input id="life" type="number" min="1" value="10" style="width:80px;display:inline-block"></label><div id="repl"></div></div><div class="card"><h3>⚠️ Perlu tindakan</h3><div id="attn"></div></div><div class="card"><h3>Jumlah unit ikut bangunan</h3><div id="btot"></div></div></section>
  <section id="t-list" class="hide"><div class="card"><input id="q" placeholder="Cari aset, bangunan, pelanggan…"><div id="list"></div></div></section>
  <section id="t-admin" class="hide">
   <div class="card"><h3>Pelanggan baharu</h3><input id="c-name" placeholder="cth: DAHLIA APARTMENT"><button class="btn" id="c-add">Tambah pelanggan</button><div class="msg" id="c-m"></div></div>
@@ -34,9 +35,13 @@ nav button{flex:1;background:none;border:0;color:#b9c3d6;margin:0;border-radius:
   <div class="card"><h3>Alat pemadam baharu</h3><select id="e-bldg"></select><select id="e-type"></select><input id="e-code" placeholder="ID aset, cth APA-0001"><input id="e-due" type="date"><button class="btn" id="e-add">Simpan aset</button><div class="msg" id="e-m"></div></div>
   <div class="card"><h3>Pautkan pengguna ke pelanggan</h3><p class="msg">Cipta pengguna dahulu di Supabase → Authentication → Users, kemudian pautkan di sini.</p><input id="u-email" type="email" placeholder="Emel pengguna"><select id="u-cust"></select><select id="u-role"><option value="customer">Pelanggan / Pengurus bangunan</option><option value="technician">Juruteknik</option></select><button class="btn" id="u-add">Pautkan</button><div class="msg" id="u-m"></div></div>
  </section>
+ <section id="t-imp" class="hide"><div class="card"><h3>Import dari Excel</h3>
+  <p class="msg">Fail .xlsx atau .csv. Ruangan dikenali: Location/Lokasi, Expired Date/Tarikh, Quantity, Serial No, Asset ID, Type/Jenis. Baris dengan ID aset sama akan dikemas kini, bukan digandakan.</p>
+  <select id="i-cust"></select><input id="i-bldg" placeholder="Nama bangunan, cth: RSC 1"><input id="i-pre" placeholder="Awalan ID aset, cth: RSC1 (jika fail tiada ID aset)">
+  <input id="i-file" type="file" accept=".xlsx,.xls,.csv"><div class="msg" id="i-m"></div><div id="i-list"></div><button class="btn hide" id="i-go">Sahkan &amp; simpan ke pangkalan data</button></div></section>
  <p class="note">Rekod dalaman APA CARE, bukan sijil rasmi JBPM/eFEIS.</p>
 </main>
-<nav id="nav" class="hide"><button data-t="dash" class="on">📊<br>Dashboard</button><button data-t="list">🧯<br>Aset</button><button data-t="admin" id="nadm" class="hide">⚙️<br>Admin</button></nav>
+<nav id="nav" class="hide"><button data-t="dash" class="on">📊<br>Dashboard</button><button data-t="list">🧯<br>Aset</button><button data-t="admin" id="nadm" class="hide">⚙️<br>Admin</button><button data-t="imp" id="nimp" class="hide">📥<br>Import</button></nav>
 <script>
 const SB=window.supabase.createClient('https://ruxzjxpahpkqaudjmetr.supabase.co','sb_publishable_lEWWGC5_LRHTDQGb_qzFiA_unEsfVT_');
 const $=s=>document.querySelector(s);let ME,A=[],CU=[],BL=[],TY=[];
@@ -44,15 +49,15 @@ const today=new Date();today.setHours(0,0,0,0);
 const st=a=>{if(!a.next_due_on)return'ok';const d=Math.round((new Date(a.next_due_on)-today)/864e5);return d<0?'over':d<=30?'soon':'ok'};
 const L={over:'Lewat',soon:'Hampir tamat',ok:'Baik'};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const item=a=>`<div class="row"><div><b>${esc(a.asset_code)}</b> · ${esc(a.extinguisher_types?.name)}<br><small>${esc(a.customers?.name)} · ${esc(a.buildings?.name)}<br>Servis: ${esc(a.next_due_on||'-')}</small></div><span class="badge ${st(a)}">${L[st(a)]}</span></div>`;
+const item=a=>`<div class="row"><div><b>${esc(a.asset_code)}</b> · ${esc(a.extinguisher_types?.name)}<br><small>${esc(a.customers?.name)} · ${esc(a.buildings?.name)}${a.locations?.exact_spot?' · '+esc(a.locations.exact_spot):''}<br>Servis: ${esc(a.next_due_on||'-')}${a.manufactured_on?'<br>Dibuat: '+esc(a.manufactured_on.slice(0,7)):''}</small></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge ${st(a)}">${L[st(a)]}</span>${rst(a)==='over'?'<span class="badge over">Tukar tabung</span>':''}</div></div>`;
 const opts=(arr,f)=>arr.map(x=>`<option value="${x.id}">${esc(f(x))}</option>`).join('');
 async function load(){
- const [a,c,b,t]=await Promise.all([SB.from('extinguishers').select('*,buildings(name),customers(name),extinguisher_types(name)').order('next_due_on'),SB.from('customers').select('id,name').order('name'),SB.from('buildings').select('id,name,customers(name)').order('name'),SB.from('extinguisher_types').select('id,name')]);
+ const [a,c,b,t]=await Promise.all([SB.from('extinguishers').select('*,buildings(name),customers(name),extinguisher_types(name),locations(exact_spot)').order('next_due_on'),SB.from('customers').select('id,name').order('name'),SB.from('buildings').select('id,name,customers(name)').order('name'),SB.from('extinguisher_types').select('id,name')]);
  A=a.data||[];CU=c.data||[];BL=b.data||[];TY=t.data||[];
  const n=k=>A.filter(x=>st(x)===k).length;
  $('#kpis').innerHTML=`<div class="kpi"><span>Jumlah aset</span><h2>${A.length}</h2></div><div class="kpi g"><span>Baik</span><h2>${n('ok')}</h2></div><div class="kpi w"><span>Servis ≤30 hari</span><h2>${n('soon')}</h2></div><div class="kpi r"><span>Lewat</span><h2>${n('over')}</h2></div>`;
  const at=A.filter(x=>st(x)!=='ok');$('#attn').innerHTML=at.length?at.map(item).join(''):'<p class="msg">Tiada aset perlu tindakan.</p>';
- list();$('#b-cust').innerHTML=$('#u-cust').innerHTML=opts(CU,x=>x.name);
+ btot();repl();list();$('#b-cust').innerHTML=$('#u-cust').innerHTML=$('#i-cust').innerHTML=opts(CU,x=>x.name);
  $('#e-bldg').innerHTML=opts(BL,x=>`${x.customers?.name||''} – ${x.name}`);$('#e-type').innerHTML=opts(TY,x=>x.name);
 }
 function list(){const q=$('#q').value.toLowerCase();const r=A.filter(x=>JSON.stringify(x).toLowerCase().includes(q));$('#list').innerHTML=r.length?r.map(item).join(''):'<p class="msg">Tiada aset.</p>'}
@@ -62,17 +67,55 @@ async function boot(){
  const {data:p}=await SB.from('profiles').select('role,customer_id').eq('id',user.id).maybeSingle();
  if(!p){$('#lm').textContent='Akaun belum dipautkan oleh admin.';await SB.auth.signOut();return}
  ME=p;$('#login').classList.add('hide');['#app','#nav','#out'].forEach(s=>$(s).classList.remove('hide'));
- if(p.role==='super_admin')$('#nadm').classList.remove('hide');
+ if(p.role==='super_admin'){$('#nadm').classList.remove('hide');$('#nimp').classList.remove('hide')}
  load();
 }
 $('#go').onclick=async()=>{$('#lm').textContent='Sila tunggu…';const {error}=await SB.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});if(error){$('#lm').textContent='Gagal: '+error.message;return}$('#lm').textContent='';boot()};
 $('#out').onclick=async e=>{e.preventDefault();await SB.auth.signOut();boot()};
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');['dash','list','admin'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t))});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');['dash','list','admin','imp'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t))});
 $('#q').oninput=list;
 async function act(m,p,ok){$(m).textContent='Menyimpan…';const {error}=await p;$(m).textContent=error?'Ralat: '+error.message:ok;if(!error)load()}
 $('#c-add').onclick=()=>act('#c-m',SB.from('customers').insert({name:$('#c-name').value.trim()}),'Pelanggan ditambah ✔');
 $('#b-add').onclick=()=>act('#b-m',SB.from('buildings').insert({customer_id:$('#b-cust').value,name:$('#b-name').value.trim()}),'Bangunan ditambah ✔');
 $('#e-add').onclick=()=>{const b=BL.find(x=>x.id===$('#e-bldg').value);act('#e-m',SB.from('buildings').select('customer_id').eq('id',b?.id).single().then(r=>SB.from('extinguishers').insert({asset_code:$('#e-code').value.trim(),building_id:b.id,customer_id:r.data.customer_id,type_id:$('#e-type').value,next_due_on:$('#e-due').value||null})),'Aset disimpan ✔')};
 $('#u-add').onclick=()=>act('#u-m',SB.rpc('admin_link_user',{p_email:$('#u-email').value.trim(),p_customer:$('#u-cust').value,p_role:$('#u-role').value}),'Pengguna dipautkan ✔');
+
+function btot(){const m={};A.forEach(a=>{const k=(a.customers?.name||'-')+' › '+(a.buildings?.name||'-');m[k]=m[k]||{n:0,o:0};m[k].n++;if(st(a)==='over')m[k].o++});$('#btot').innerHTML=Object.entries(m).map(([k,v])=>`<div class="row"><div>${esc(k)}</div><div><b>${v.n}</b> unit${v.o?` · <span style="color:var(--red)">${v.o} lewat</span>`:''}</div></div>`).join('')||'<p class="msg">Tiada data.</p>'}
+let IMP=[];const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const pick=(r,k)=>{for(const x in r)if(k.includes(norm(x)))return r[x];return ''};
+function pdate(v){if(v===''||v==null)return null;if(typeof v==='number')return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);const m=String(v).trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:null}
+$('#i-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;const m=$('#i-m');m.textContent='Membaca fail…';$('#i-go').classList.add('hide');
+ try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+ const pre=($('#i-pre').value.trim()||'APA').toUpperCase().replace(/\s+/g,'');let c=0;IMP=[];
+ rows.forEach(r=>{const loc=String(pick(r,['location','lokasi','floorlocation'])).trim(),c0=String(pick(r,['assetid','idaset','assetcode'])).trim();if(!loc&&!c0)return;
+  const raw=pick(r,['expireddate','expirydate','tarikhtamat','tarikh','duedate','nextdue','efeisexp','efeisexpiry']),due=pdate(raw),cond=due||raw===''?'':String(raw).trim();
+  const n=parseInt(pick(r,['quantity','qty','kuantiti']))||1,sn=String(pick(r,['serialno','serial','serialnumber','nosiri'])).trim(),tn0=String(pick(r,['type','jenis'])).trim().toLowerCase(),tn=({dp:'abc dry powder'})[tn0]||tn0,t=TY.find(x=>x.name.toLowerCase()===tn),bd=String(pick(r,['brand','jenama'])).trim(),my=parseInt(pick(r,['manuyear','manufactureyear','manufacturingyear','tahunbuatan'])),mm=parseInt(pick(r,['month','bulan']))||1,mfg=my>1990&&my<2100?`${my}-${String(Math.min(12,mm)).padStart(2,'0')}-01`:null;
+  for(let i=1;i<=n;i++){c++;IMP.push({loc,due,cond,sn,brand:bd,mfg,type:t?t.id:null,code:c0?(n>1?c0+'-'+i:c0):(sn?pre+'-'+sn+(n>1?'-'+i:''):pre+'-'+String(c).padStart(3,'0'))})}});
+ const seen={};IMP.forEach(x=>{if(seen[x.code]){seen[x.code]++;x.code+='-'+seen[x.code]}else seen[x.code]=1});
+ if(!IMP.length){m.textContent='Tiada baris dikenal pasti. Pastikan ada ruangan Location/Lokasi.';return}
+ const {data}=await SB.from('extinguishers').select('asset_code').in('asset_code',IMP.map(x=>x.code));const have=new Set((data||[]).map(x=>x.asset_code));
+ const upd=IMP.filter(x=>have.has(x.code)).length,over=IMP.filter(x=>x.due&&new Date(x.due)<today).length,nod=IMP.filter(x=>!x.due).length,rep=IMP.filter(x=>x.mfg&&new Date(+x.mfg.slice(0,4)+LIFE,+x.mfg.slice(5,7)-1,1)<=today).length;
+ m.innerHTML=`<b>${IMP.length}</b> unit · baharu ${IMP.length-upd} · kemas kini ${upd}<br>Lewat: ${over} · Tiada tarikh sah: ${nod} · Cukup umur tukar tabung: ${rep}. Semak senarai, kemudian sahkan.`;
+ $('#i-list').innerHTML=IMP.map(x=>`<div class="row"><div>${esc(x.code)}<br><small>${esc(x.loc)}</small></div><small>${esc(x.due||x.cond||'-')}</small></div>`).join('');$('#i-go').classList.remove('hide')
+ }catch(err){m.textContent='Gagal baca fail: '+err.message}};
+$('#i-go').onclick=async()=>{const m=$('#i-m'),cu=$('#i-cust').value,bn=$('#i-bldg').value.trim();if(!cu||!bn){m.textContent='Pilih pelanggan dan isi nama bangunan.';return}
+ m.textContent='Menyimpan…';const fail=r=>{m.textContent='Ralat: '+r.error.message;return true};
+ let b=(await SB.from('buildings').select('id').eq('customer_id',cu).eq('name',bn).maybeSingle()).data;
+ if(!b){const r=await SB.from('buildings').insert({customer_id:cu,name:bn}).select('id').single();if(r.error&&fail(r))return;b=r.data}
+ const ex=(await SB.from('locations').select('id,exact_spot').eq('building_id',b.id)).data||[],lm=new Map(ex.map(x=>[x.exact_spot,x.id]));
+ const need=[...new Set(IMP.map(x=>x.loc).filter(l=>l&&!lm.has(l)))];
+ if(need.length){const r=await SB.from('locations').insert(need.map(l=>({building_id:b.id,customer_id:cu,exact_spot:l}))).select('id,exact_spot');if(r.error&&fail(r))return;r.data.forEach(x=>lm.set(x.exact_spot,x.id))}
+ const hT=IMP.some(x=>x.type),hS=IMP.some(x=>x.sn);
+ const rows=IMP.map(x=>{const o={asset_code:x.code,customer_id:cu,building_id:b.id,location_id:lm.get(x.loc)||null,next_due_on:x.due,condition:x.cond||null};if(hT)o.type_id=x.type;if(hS)o.serial_no=x.sn||null;if(IMP.some(y=>y.brand))o.brand=x.brand||null;if(IMP.some(y=>y.mfg))o.manufactured_on=x.mfg;return o});
+ const r=await SB.from('extinguishers').upsert(rows,{onConflict:'asset_code'});if(r.error&&fail(r))return;
+ m.textContent=`Berjaya: ${rows.length} unit disimpan ✔`;$('#i-go').classList.add('hide');$('#i-list').innerHTML='';load()};
+
+const LK='apacare_life';let LIFE=10;try{LIFE=+localStorage.getItem(LK)||10}catch(e){}
+const fm=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+function rdate(a){if(!a.manufactured_on)return null;const d=new Date(a.manufactured_on);return new Date(d.getFullYear()+LIFE,d.getMonth(),d.getDate())}
+function rst(a){const r=rdate(a);if(!r)return null;return r<=today?'over':(r-today)/864e5<=365?'soon':'ok'}
+function repl(){const L2=A.filter(a=>rst(a)&&rst(a)!=='ok').sort((a,b)=>rdate(a)-rdate(b)),o=L2.filter(a=>rst(a)==='over').length,nm=A.filter(a=>!a.manufactured_on).length;
+ $('#repl').innerHTML=`<p class="msg"><b style="color:var(--red)">${o}</b> unit sudah cukup ${LIFE} tahun · ${L2.length-o} akan cukup dalam 12 bulan${nm?` · ${nm} unit tiada tahun buatan`:''}</p>`+L2.map(a=>`<div class="row"><div><b>${esc(a.asset_code)}</b> · ${esc(a.extinguisher_types?.name||'')}<br><small>${esc(a.buildings?.name)} · ${esc(a.locations?.exact_spot||'')}<br>Dibuat: ${esc(a.manufactured_on.slice(0,7))} · Tukar: ${fm(rdate(a))}</small></div><span class="badge ${rst(a)}">${rst(a)==='over'?'Tukar':'Hampir'}</span></div>`).join('')}
+$('#life').value=LIFE;$('#life').onchange=()=>{LIFE=Math.max(1,+$('#life').value||10);try{localStorage.setItem(LK,LIFE)}catch(e){};repl();list()};
 boot();
 </script></body></html>
